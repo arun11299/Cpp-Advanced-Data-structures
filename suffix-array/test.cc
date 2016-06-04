@@ -3,7 +3,9 @@
 using namespace ds;
 
 int main() {
-  std::string s("ababab");
-  qsufsort(s.begin(), s.end());
+  std::string s("abcabc");
+  std::cout << s << std::endl;
+  auto c = qsufsort(s.begin(), s.end());
+
   return 0;
 }
