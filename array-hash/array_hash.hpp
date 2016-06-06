@@ -23,6 +23,15 @@ namespace ds {
 
 namespace detail {
 
+/*
+ * @class Buffer
+ * RAII based class to hold a chunk of raw memory
+ * Exposed API's:
+ * 1. data() - Returns the start(mutable) of the buffer.
+ * 2. resize(new_size) - Extends the memory using realloc
+ * Exactly for this reason (realloc), I am not using vector<char>
+ */
+
 // Deletor for unique_ptr
 struct free_deletor {
   void operator()(void* ptr) {
@@ -56,6 +65,8 @@ private:
   std::unique_ptr<char, free_deletor> memory_ = nullptr;
 };
 
+//==============================================================================
+
 template <typename KeyType, typename ValueType>
 class RawMemoryMapImpl: private Buffer
 {
@@ -68,7 +79,7 @@ public:
     	"KeyType is expected to be pointer type");
   }
 
-  using Buffer::data;
+  //using Buffer::data;
 
   // Returns nullptr on failure
   // users of this class are strictly expected
