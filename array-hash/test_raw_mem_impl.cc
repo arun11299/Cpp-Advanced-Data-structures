@@ -13,6 +13,7 @@ void simple_test()
   assert (res == true);
 
   auto siz = hmap.size();
+  std::cout << siz << std::endl;
   assert (siz == (1 + 6 + sizeof(int)));
 
   auto* val = hmap.find("Test-1", 6);

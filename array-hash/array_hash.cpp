@@ -62,7 +62,10 @@ append(KeyType key, size_t key_len, const ValueType& value)
   // Key does not exist already
   bool res = false;
   auto old_siz = size();
-  auto new_siz = old_siz + (key_len < 128 ? 1 : 2) + key_len + sizeof(ValueType);
+  auto new_siz = (old_siz == 0 ? sizeof(uint32_t) : 0) + // Buffer for holding size information
+                 (key_len < 128 ? 1 : 2) +  // Extra byte(s) for storing length encoding
+                 key_len +                  // Buffer for holding key
+                 sizeof(ValueType);         // Buffer for holding value
 
   // Increase the size of memory buffer to 
   // accomodate one more key value
@@ -71,7 +74,7 @@ append(KeyType key, size_t key_len, const ValueType& value)
     return false;
   }
   // Update the size at the head of the buffer
-  update_size(new_siz);
+  update_size(new_siz - (old_siz == 0 ? sizeof(uint32_t) : 0));
 
   auto data_ptr = data() + (old_siz == 0 ? sizeof(uint32_t) : old_siz);
 
