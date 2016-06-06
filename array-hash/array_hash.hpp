@@ -67,23 +67,49 @@ private:
 
 //==============================================================================
 
+/*
+ * @class RawMemoryMapImpl
+ * Implements the storage as a contiguous memory layout
+ * by mapping Key and value one after the other.
+ * TODO: More details please
+ *
+ * Exposed API's:
+ * 1. find()
+ * 2. append()
+ * 3. remove()
+ */
+
 template <typename KeyType, typename ValueType>
 class RawMemoryMapImpl: private Buffer
 {
 public:
-  RawMemoryMapImpl() {
-    static_assert(std::is_pod<ValueType>::value, 
-    	"RawMemoryMapImpl supports only POD value types.");
+  RawMemoryMapImpl();
+  RawMemoryMapImpl(const RawMemoryMapImpl& other) = delete;
+  void operator=(const RawMemoryMapImpl& other) = delete;
 
-    static_assert(std::is_pointer<KeyType>::value,
-    	"KeyType is expected to be pointer type");
+public:
+
+  ValueType* find(const KeyType key, size_t key_len);
+
+  bool append(const KeyType key, size_t key_len, const ValueType& value);
+
+  bool remove(const KeyType key, size_t key_len);
+
+  /* Returns the size of the total key-value pairs.
+   * The calculated size does not include the size of the 
+   * buffer (uint32_t) holding the value of size
+   */
+  size_t size() const noexcept {
+    auto data = Buffer::data();
+    if (unlikely(!data)) return 0;
+    return *reinterpret_cast<uint32_t*>(data);
   }
 
-  //using Buffer::data;
-
-  // Returns nullptr on failure
-  // users of this class are strictly expected
-  // to check
+private:
+  /* Returns nullptr on failure
+   * users of this class are strictly expected
+   * to check
+   */
   const char* resize(size_t siz) {
     if (siz < size()) return Buffer::data();
     return Buffer::resize(siz);
@@ -97,32 +123,22 @@ public:
     return total_len;
   }
 
-  // Return nullptr when not found
-  ValueType* find(const KeyType key, size_t key_len);
-
-  bool append(const KeyType key, size_t key_len, const ValueType& value);
-
-  bool remove(const KeyType key, size_t key_len);
-
-  // Returns the size of the total key-value pairs.
-  // The calculated size does not include the size of the 
-  // buffer (uint32_t) holding the value of size
-  size_t size() const noexcept {
-    auto data = Buffer::data();
-    if (unlikely(!data)) return 0;
-    // Strong invariant that needs to be maintained
-    return *reinterpret_cast<uint32_t*>(data);
-  }
-
   void update_size(uint32_t new_size) noexcept {
     auto data = Buffer::data();
     if (unlikely(!data)) return;
 
     *reinterpret_cast<uint32_t*>(data) = new_size;
   }
-
 };
 
+
+//==============================================================================
+
+/*
+ * @class ListImpl
+ */
+
+template <typename KeyType, typename ValueType>
 class ListImpl
 {
 };

@@ -17,6 +17,16 @@ static inline size_t offset_pointer_to_key(char*& data_ptr)
 }
 
 template <typename KeyType, typename ValueType>
+RawMemoryMapImpl<KeyType, ValueType>::RawMemoryMapImpl()
+{
+  static_assert(std::is_pod<ValueType>::value,
+       "RawMemoryMapImpl supports only POD value types.");
+
+  static_assert(std::is_pointer<KeyType>::value,
+       "KeyType is expected to be pointer type");
+}
+
+template <typename KeyType, typename ValueType>
 ValueType* 
 RawMemoryMapImpl<KeyType, ValueType>::
 find(const KeyType key, size_t key_len)
