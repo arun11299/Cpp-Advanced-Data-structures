@@ -61,7 +61,7 @@ find(const KeyType key, size_t key_len)
 template <typename KeyType, typename ValueType>
 bool 
 RawMemoryMapImpl<KeyType, ValueType>::
-append(KeyType key, size_t key_len, const ValueType& value)
+add(KeyType key, size_t key_len, const ValueType& value)
 {
   auto* fvalue = find(key, key_len);
   if (fvalue) {
@@ -128,4 +128,106 @@ remove(const KeyType key, size_t key_len)
   update_size(curr_size - elem_size);
 
   return true;
+}
+
+
+//====================================================================================
+
+template <typename KeyType, typename ValueType>
+ListMapImpl<KeyType, ValueType>::ListMapImpl()
+{
+  static_assert(std::is_pod<ValueType>::value,
+	      "RawMemoryMapImpl supports only POD value types.");
+
+  static_assert(std::is_pointer<KeyType>::value,
+	      "KeyType is expected to be pointer type");
+}
+
+
+template <typename KeyType, typename ValueType>
+ValueType*
+ListMapImpl<KeyType, ValueType>::
+find(const KeyType key, size_t key_len)
+{
+  if (head_ == nullptr) return nullptr;
+  auto iter = head_.get();
+
+  while (iter) {
+    if (iter->key_len_ != key_len) {
+      iter = (iter->next_).get();
+      continue;
+    }
+    if (memcmp(key, iter->key_, key_len) == 0) {
+      return &iter->value_;
+    }
+    iter = (iter->next_).get();
+  }
+
+  return nullptr;
+}
+
+
+template <typename KeyType, typename ValueType>
+bool
+ListMapImpl<KeyType, ValueType>::
+add(const KeyType key, size_t key_len, const ValueType& value)
+{
+  // Check if already exists
+  auto val = find(key, key_len);
+  if (val) {
+    *val = value;
+    return true;
+  }
+
+  // Add it to the front of the list
+  // Make storage of key cache efficient
+  std::unique_ptr<char[]> blob(new char[sizeof(ListNode) + 
+			sizeof(typename std::remove_pointer<KeyType>::type)*key_len]);
+
+  auto node = reinterpret_cast<ListNode*>(blob.get());
+  auto str_ptr = blob.get() + sizeof(ListNode);
+  blob.release();
+
+  memcpy(str_ptr, key, key_len);
+  node->key_ = str_ptr;
+  node->key_len_ = key_len;
+  node->value_ = value;
+  node->next_.reset(head_.get());
+
+  head_.release();
+  head_.reset(node);
+
+  size_++;
+
+  return true;
+}
+
+
+template <typename KeyType, typename ValueType>
+bool 
+ListMapImpl<KeyType, ValueType>::
+remove(const KeyType key, size_t key_len)
+{
+  if (head_ == nullptr) return false;
+  auto iter = head_.get();
+  auto iter_next = (iter->next_).get();
+
+  // Check if head is what we need to remove
+  if (iter->compare(key, key_len)) {
+    head_.reset(iter->next_.release());
+    size_--;
+    return true;
+  }
+
+  while (iter && iter_next) {
+    if (iter_next->compare(key, key_len)) {
+      iter->next_.reset(iter_next->next_.release());
+      size_--;
+      return true;
+    }
+    iter = iter_next;
+    iter_next = iter->next_.get();
+  }
+
+  return false;
 }

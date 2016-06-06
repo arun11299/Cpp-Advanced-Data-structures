@@ -9,7 +9,7 @@ void simple_test()
   RawMemoryMapImpl<const char*, int> hmap;
 
   std::cout << "Init size = " << hmap.size() << std::endl;
-  res = hmap.append("Test-1", 6, 42);
+  res = hmap.add("Test-1", 6, 42);
   assert (res == true);
 
   auto siz = hmap.size();
@@ -20,7 +20,7 @@ void simple_test()
   assert (val != nullptr);
   std::cout << "Value for key(Test-1) = " << *val << std::endl;
 
-  res = hmap.append("Test-1", 6, 43);
+  res = hmap.add("Test-1", 6, 43);
   assert (res == true);
 
   auto new_siz = hmap.size();
@@ -36,7 +36,7 @@ void simple_delete_test()
 {
   bool res = false;
   RawMemoryMapImpl<const char*, int> hmap;
-  res = hmap.append("Test-1", 6, 42);
+  res = hmap.add("Test-1", 6, 42);
   assert (res == true);
 
   res = hmap.remove("Test-1", 6);
@@ -47,7 +47,7 @@ void simple_delete_test()
   auto* val = hmap.find("Test-1", 6);
   assert (val == nullptr);
 
-  res = hmap.append("Test-1", 6, 42);
+  res = hmap.add("Test-1", 6, 42);
   assert (res == true);
 
   auto size = hmap.size();

@@ -67,6 +67,9 @@ private:
 
 //==============================================================================
 
+//TODO: Object ownership for `value` ?For now its assumed to be
+// purely on copy semantics
+
 /*
  * @class RawMemoryMapImpl
  * Implements the storage as a contiguous memory layout
@@ -75,7 +78,7 @@ private:
  *
  * Exposed API's:
  * 1. find()
- * 2. append()
+ * 2. add()
  * 3. remove()
  */
 
@@ -91,7 +94,7 @@ public:
 
   ValueType* find(const KeyType key, size_t key_len);
 
-  bool append(const KeyType key, size_t key_len, const ValueType& value);
+  bool add(const KeyType key, size_t key_len, const ValueType& value);
 
   bool remove(const KeyType key, size_t key_len);
 
@@ -139,8 +142,41 @@ private:
  */
 
 template <typename KeyType, typename ValueType>
-class ListImpl
+class ListMapImpl
 {
+public:
+  ListMapImpl();
+  ListMapImpl(const ListMapImpl&) = delete;
+  void operator=(const ListMapImpl&) = delete;
+
+public:
+
+  ValueType* find(const KeyType key, size_t key_len);
+
+  // Adds new key to the front of the list
+  bool add(const KeyType key, size_t key_len, const ValueType& value);
+
+  bool remove(const KeyType key, size_t key_len);
+
+  size_t size() const noexcept { return size_; }
+
+private:
+  struct ListNode {
+    using NodeKey = typename std::remove_const<KeyType>::type;
+
+    bool compare(const KeyType key, size_t klen) {
+      return (klen == key_len_) && 
+	     (memcmp(key, key_, klen) == 0);
+    }
+
+    NodeKey key_ = nullptr;
+    size_t key_len_ = 0;
+    ValueType value_;
+    std::unique_ptr<ListNode> next_;
+  };
+
+  uint32_t size_  = 0;
+  std::unique_ptr<ListNode> head_ = nullptr;
 };
 
 }
