@@ -161,6 +161,13 @@ public:
   size_t size() const noexcept { return size_; }
 
 private:
+  struct ListNode;
+  struct ListNodeDeleter {
+    void operator()(ListNode* node) {
+      delete [] (reinterpret_cast<char*>(node));
+    }
+  };
+
   struct ListNode {
     using NodeKey = typename std::remove_const<KeyType>::type;
 
@@ -172,11 +179,11 @@ private:
     NodeKey key_ = nullptr;
     size_t key_len_ = 0;
     ValueType value_;
-    std::unique_ptr<ListNode> next_;
+    std::unique_ptr<ListNode, ListNodeDeleter> next_ = nullptr;
   };
 
   uint32_t size_  = 0;
-  std::unique_ptr<ListNode> head_ = nullptr;
+  std::unique_ptr<ListNode, ListNodeDeleter> head_ = nullptr;
 };
 
 }

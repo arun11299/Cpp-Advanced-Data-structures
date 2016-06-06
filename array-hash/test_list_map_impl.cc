@@ -43,7 +43,6 @@ void simple_delete_test()
   assert (res == true);
 
   std::cout << "Size after remove = " << hmap.size() << std::endl;
-
   auto* val = hmap.find("Test-1", 6);
   assert (val == nullptr);
 

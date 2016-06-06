@@ -149,7 +149,7 @@ ValueType*
 ListMapImpl<KeyType, ValueType>::
 find(const KeyType key, size_t key_len)
 {
-  if (head_ == nullptr) return nullptr;
+  if (!head_) return nullptr;
   auto iter = head_.get();
 
   while (iter) {
@@ -184,7 +184,7 @@ add(const KeyType key, size_t key_len, const ValueType& value)
   std::unique_ptr<char[]> blob(new char[sizeof(ListNode) + 
 			sizeof(typename std::remove_pointer<KeyType>::type)*key_len]);
 
-  auto node = reinterpret_cast<ListNode*>(blob.get());
+  auto node = new (blob.get()) ListNode;
   auto str_ptr = blob.get() + sizeof(ListNode);
   blob.release();
 
