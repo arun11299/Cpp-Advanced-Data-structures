@@ -209,25 +209,20 @@ ListMapImpl<KeyType, ValueType>::
 remove(const KeyType key, size_t key_len)
 {
   if (head_ == nullptr) return false;
-  auto iter = head_.get();
-  auto iter_next = (iter->next_).get();
 
-  // Check if head is what we need to remove
-  if (iter->compare(key, key_len)) {
-    head_.reset(iter->next_.release());
-    size_--;
-    return true;
-  }
+  ListNode* prev_entry = nullptr;
+  ListNode* entry = head_.get();
 
-  while (iter && iter_next) {
-    if (iter_next->compare(key, key_len)) {
-      iter->next_.reset(iter_next->next_.release());
-      size_--;
-      return true;
+  while (entry) {
+    if (entry->compare(key, key_len)) {
+      if (!prev_entry) head_.reset(entry->next_.get());
+      else prev_entry->next_ = std::move(entry->next_);
+      size_ -= 1;
+      break;
     }
-    iter = iter_next;
-    iter_next = iter->next_.get();
+    prev_entry = entry;
+    entry = entry->next_.get();
   }
 
-  return false;
+  return entry ? true : false;
 }

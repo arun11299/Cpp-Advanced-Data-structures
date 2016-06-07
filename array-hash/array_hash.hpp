@@ -162,6 +162,7 @@ public:
 
 private:
   struct ListNode;
+
   struct ListNodeDeleter {
     void operator()(ListNode* node) {
       delete [] (reinterpret_cast<char*>(node));
