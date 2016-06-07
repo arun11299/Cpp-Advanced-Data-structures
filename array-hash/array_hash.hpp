@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 #include <type_traits>
+#include "hash.hpp"
 
 
 #define likely(x)       __builtin_expect((x),1)
@@ -91,6 +92,10 @@ public:
   void operator=(const RawMemoryMapImpl& other) = delete;
 
 public:
+  using key_type = KeyT;
+  using value_type = ValueT;
+
+public:
 
   ValueType* find(const KeyType key, size_t key_len);
 
@@ -146,6 +151,10 @@ public:
   ListMapImpl();
   ListMapImpl(const ListMapImpl&) = delete;
   void operator=(const ListMapImpl&) = delete;
+
+public:
+  using key_type = KeyT;
+  using value_type = ValueT;
 
 public:
 
@@ -204,31 +213,69 @@ private:
   std::unique_ptr<ListNode, ListNodeDeleter> head_ = nullptr;
 };
 
-}
+}// END OF NAMESPACE DETAIL
 
-/*
-using KeyType = char*;
+//=================================================================================
+using KeyType = const char*;
+//=================================================================================
 
-template <typename ValueType, 
-		  // Type of Value stored against the Key
-	  typename Hasher = typename hash::Murmur, 
-			    // Hashing used internally
+template <typename KVStore>
+class ArrayHashIterator
+{
+public:
+  using iterator_category = std::forward_iterator_tag;
+  using value_type        = std::pair<typename KVStore::key_type, 
+				      typename KVStore::value_type*>;
+  using pointer           = typename std::add_pointer<value_type>::type;
+  using reference         = typename std::add_lvalue_reference<value_type>::type;
+  using difference_type   = ptrdiff_t; // ?
+  using self_type         = ArrayHashIterator<KVStore>;
+
+public:
+  ArrayHashIterator(std::vector<KVStore>&);
+  value_type operator*() const;
+  value_type operator++();
+  value_type operatoe++(int);
+  bool operator==(const self_type&);
+  bool operator!=(const self_type&);
+
+private:
+  std::vector<KVStore>& cont_;
+  const char* impl_pointer_ = nullptr;
+};
+
+
+//==================================================================================
+
+template <// Type of Value stored against the Key
+	  typename ValueType, 
+	  // Hashing used internally
+	  typename Hasher = typename hash::MurmurHash3,
+	  // Type of implementation used to store key-value
 	  typename KVStore = typename detail::RawMemoryMapImpl<KeyType, ValueType>, 
-			    // Type of implementation used to store key-value
 	  >
 class ArrayHash
 {
 public:
   ArrayHash(): ArrayHash(initial_capacity_) {}
-  ArrayHash(size_t initial_capacity);
+  ArrayHash(size_t initial_capacity): total_slots_(initial_capacity)
+				    , hash_slots_(total_slots_)
+  {}
+  ArrayHash(const ArrayHash&) = delete;
+  void operator=(const ArrayHash&) = delete;
+public:
+  using iterator = ArrayHashIterator<KVStore>;
+  using const_iterator = const iterator;
 
-  bool insert(const KeyType key, ValueType& value);
-  ValueType& operator[](const KeyType key);
+  iterator begin();
+  iterator end();
+  const_iterator cbegin();
+  const_iterator cend();
 
-  // TODO:: This interface needs to be removed and
-  // replaced with iterator based
-  ValueType get(const KeyType key) const;
-  ValueType operator[](const ValueType key) const;
+public:
+  void add();
+  void find();
+  void remove();
 
 private:
   // Constant parameters
@@ -236,17 +283,26 @@ private:
   const size_t initial_capacity_ = 4096;
 
   // Runtime parameters
-  size_t total_slots_;
+  size_t total_slots_            = 0;
   size_t used_slots_             = 0;
 
-  // Hasher
-  Hasher hash_;
-
   // Storage Container
+  // TODO: Need a configurable allocator
   std::vector<KVStore> hash_slots_;
 };
 
-*/
+
+// Useful typedefs for lesser finger smashing.
+template <typename ValueT, 
+	 typename Hasher = typename hash::MurmurHash3>
+using ArrayHashBlob = ArrayHash<ValueT, Hasher, 
+                                typename detail::RawMemoryMapImpl<KeyType, ValueT>>;
+
+template<typename ValueT,
+	 typename Hasher = typename hash::MurmurHash3>
+using ArrayHashList = ArrayHash<ValueT, Hasher,
+				typename detail::ListMapImpl<KeyType, ValueT>>;	
+
 
 }
 
