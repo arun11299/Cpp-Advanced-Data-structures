@@ -153,17 +153,11 @@ find(const KeyType key, size_t key_len)
   auto iter = head_.get();
 
   while (iter) {
-    if (iter->key_len_ != key_len) {
-      iter = (iter->next_).get();
-      continue;
-    }
-    if (memcmp(key, iter->key_, key_len) == 0) {
-      return &iter->value_;
-    }
-    iter = (iter->next_).get();
+    if (iter->compare(key, key_len)) break;
+    iter = iter->next_.get();
   }
 
-  return nullptr;
+  return iter ? &(iter->value_) : nullptr;
 }
 
 
