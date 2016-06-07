@@ -34,25 +34,21 @@ find(const KeyType key, size_t key_len)
   size_t total_len = basic_checks_size(key, key_len);
   if (unlikely(total_len == 0)) return nullptr;
 
-  auto data_ptr = data();
+  auto data_ptr = data() + sizeof(uint32_t); // offset the length
   auto start = data_ptr;
-
-  data_ptr += sizeof(uint32_t); // offset the length
-  auto value_siz = sizeof(ValueType);
 
   while ((size_t)(data_ptr - start) < total_len) {
     auto embd_ksiz = offset_pointer_to_key(data_ptr);
 
     if (embd_ksiz != key_len) {
-      data_ptr += (embd_ksiz + value_siz);
+      data_ptr += (embd_ksiz + sizeof(ValueType));
       continue;
     }
     if (memcmp(data_ptr, key, key_len) == 0) {
       data_ptr += embd_ksiz;
       return reinterpret_cast<ValueType*>(data_ptr);
     } else {
-      data_ptr += (embd_ksiz + value_siz);
-      continue;
+      data_ptr += (embd_ksiz + sizeof(ValueType));
     }
   }
   return nullptr;
@@ -63,19 +59,19 @@ bool
 RawMemoryMapImpl<KeyType, ValueType>::
 add(KeyType key, size_t key_len, const ValueType& value)
 {
-  auto* fvalue = find(key, key_len);
-  if (fvalue) {
-    // Found value, replace it
-    *fvalue = value;
+  auto* val = find(key, key_len);
+  if (val) {
+    *val = value;
     return true;
   }
+
   // Key does not exist already
   bool res = false;
   auto old_siz = size();
   auto new_siz = (old_siz == 0 ? sizeof(uint32_t) : 0) + // Buffer for holding size information
-                 (key_len < 128 ? 1 : 2) +  // Extra byte(s) for storing length encoding
-                 key_len +                  // Buffer for holding key
-                 sizeof(ValueType);         // Buffer for holding value
+                 (key_len < 128 ? 1 : 2) +               // Extra byte(s) for storing length encoding
+                  key_len +                              // Buffer for holding key
+                  sizeof(ValueType);                     // Buffer for holding value
 
   // Increase the size of memory buffer to 
   // accomodate one more key value
@@ -101,8 +97,8 @@ add(KeyType key, size_t key_len, const ValueType& value)
   memcpy(data_ptr, key, key_len);
   data_ptr += key_len;
 
-  // Copy the Value
-  *reinterpret_cast<ValueType*>(data_ptr) = value;
+  // initialize the value
+  new (data_ptr) ValueType(value);
   return true;
 }
 

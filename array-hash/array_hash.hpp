@@ -104,8 +104,7 @@ public:
    */
   size_t size() const noexcept {
     auto data = Buffer::data();
-    if (unlikely(!data)) return 0;
-    return *reinterpret_cast<uint32_t*>(data);
+    return data ? *reinterpret_cast<uint32_t*>(data) : 0;
   }
 
 private:
@@ -129,7 +128,6 @@ private:
   void update_size(uint32_t new_size) noexcept {
     auto data = Buffer::data();
     if (unlikely(!data)) return;
-
     *reinterpret_cast<uint32_t*>(data) = new_size;
   }
 };
@@ -161,7 +159,7 @@ public:
   size_t size() const noexcept { return size_; }
 
 private:
-  struct ListNode;
+  class ListNode;
 
   struct ListNodeDeleter {
     void operator()(ListNode* node) {
@@ -193,6 +191,9 @@ private:
     }
 
   public:
+    // Key is allocated right after the ListNode to improve
+    // cache hit. This design results in wierd allocation and deallocation
+    // of ListNode
     NodeKey key_ = nullptr;
     size_t key_len_ = 0;
     ValueType value_;
