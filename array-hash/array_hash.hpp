@@ -169,14 +169,30 @@ private:
     }
   };
 
-  struct ListNode {
+  class ListNode
+  {
+  public:
     using NodeKey = typename std::remove_const<KeyType>::type;
 
+    ListNode(NodeKey k, size_t l, const ValueType& v, 
+    	std::unique_ptr<ListNode, ListNodeDeleter> nxt):
+      key_(k),
+      key_len_(l),
+      value_(v),
+      next_(std::move(nxt))
+    {}
+
+    ListNode(const ListNode&) = delete;
+    void operator=(const ListNode&) = delete;
+    ~ListNode() = default;
+
+  public:
     bool compare(const KeyType key, size_t klen) {
       return (klen == key_len_) && 
 	     (memcmp(key, key_, klen) == 0);
     }
 
+  public:
     NodeKey key_ = nullptr;
     size_t key_len_ = 0;
     ValueType value_;

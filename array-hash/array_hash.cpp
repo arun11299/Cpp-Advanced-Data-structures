@@ -184,21 +184,16 @@ add(const KeyType key, size_t key_len, const ValueType& value)
   std::unique_ptr<char[]> blob(new char[sizeof(ListNode) + 
 			sizeof(typename std::remove_pointer<KeyType>::type)*key_len]);
 
-  auto node = new (blob.get()) ListNode;
   auto str_ptr = blob.get() + sizeof(ListNode);
-  blob.release();
-
   memcpy(str_ptr, key, key_len);
-  node->key_ = str_ptr;
-  node->key_len_ = key_len;
-  node->value_ = value;
-  node->next_.reset(head_.get());
 
+  auto node = new (blob.get()) ListNode(str_ptr, key_len, value, std::move(head_));
+
+  blob.release();
   head_.release();
   head_.reset(node);
 
-  size_++;
-
+  size_ += 1;
   return true;
 }
 
