@@ -67,6 +67,20 @@ private:
 };
 
 //==============================================================================
+// Fwd declare iterator class
+template <typename T>
+class ArrayHashIterator;
+
+//TODO: should be replaced by string_view
+template <typename KeyT>
+struct KeyHolder
+{
+  KeyHolder(KeyT k, size_t l): ket_ptr(k)
+  			     , key_len(l)
+  {}
+  KeyT ket_ptr = nullptr;
+  size_t key_len = 0;
+};
 
 //TODO: Object ownership for `value` ?For now its assumed to be
 // purely on copy semantics
@@ -94,6 +108,7 @@ public:
 public:
   using key_type = KeyT;
   using value_type = ValueT;
+  friend class ArrayHashIterator<RawMemoryMapImpl<KeyType, ValueType>>;
 
 public:
 
@@ -135,6 +150,11 @@ private:
     if (unlikely(!data)) return;
     *reinterpret_cast<uint32_t*>(data) = new_size;
   }
+
+private: //For iterator class only
+  char* first() const noexcept;
+  std::pair<KeyHolder<KeyType>, ValueType*> item(char* ptr) const noexcept;
+  char* next(char* prev) const noexcept;
 };
 
 
@@ -155,6 +175,7 @@ public:
 public:
   using key_type = KeyT;
   using value_type = ValueT;
+  friend class ArrayHashIterator<ListMapImpl<KeyType, ValueType>>;
 
 public:
 
@@ -211,6 +232,11 @@ private:
 
   uint32_t size_  = 0;
   std::unique_ptr<ListNode, ListNodeDeleter> head_ = nullptr;
+
+private: //For iterator class only
+  char* first() const noexcept;
+  std::pair<KeyHolder<KeyType>, ValueType*> item(char* ptr) const noexcept;
+  char* next(char* prev) const noexcept;
 };
 
 }// END OF NAMESPACE DETAIL
@@ -224,7 +250,7 @@ class ArrayHashIterator
 {
 public:
   using iterator_category = std::forward_iterator_tag;
-  using value_type        = std::pair<typename KVStore::key_type, 
+  using value_type        = std::pair<KeyHolder<typename KVStore::key_type>, 
 				      typename KVStore::value_type*>;
   using pointer           = typename std::add_pointer<value_type>::type;
   using reference         = typename std::add_lvalue_reference<value_type>::type;
@@ -232,16 +258,17 @@ public:
   using self_type         = ArrayHashIterator<KVStore>;
 
 public:
-  ArrayHashIterator(std::vector<KVStore>&);
+  ArrayHashIterator(const std::vector<KVStore>& kvs);
   value_type operator*() const;
-  value_type operator++();
-  value_type operatoe++(int);
-  bool operator==(const self_type&);
-  bool operator!=(const self_type&);
+  self_type& operator++();
+  bool operator==(const self_type&) const;
+  bool operator!=(const self_type&) const;
 
 private:
   std::vector<KVStore>& cont_;
+  // Pointer to the underlying storage type `KVStore`
   const char* impl_pointer_ = nullptr;
+  size_t cont_slot_ = 0;
 };
 
 

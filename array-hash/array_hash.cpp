@@ -126,6 +126,45 @@ remove(const KeyType key, size_t key_len)
   return true;
 }
 
+template <typename KeyType, typename ValueType>
+char*
+RawMemoryMapImpl<KeyType, ValueType>::first() const noexcept
+{
+  auto total_len = size();
+  if (total_len == 0) return nullptr;
+
+  auto data_ptr = data() + sizeof(uint32_t);
+  return data_ptr;
+}
+
+template <typename KeyType, typename ValueType>
+std::pair<KeyHolder<KeyType>, ValueType*>
+RawMemoryMapImpl<KeyType, ValueType>::item(char* ptr) const noexcept
+{
+  assert (ptr);
+  auto key_len = offset_pointer_to_key(ptr);
+  KeyHolder<KeyType> kh = {ptr, key_len};
+
+  ptr += key_len;
+  return std::make_pair(kh, reinterpret_cast<ValueType*>(ptr));
+}
+
+template <typename KeyType, typename ValueType>
+char*
+RawMemoryMapImpl<KeyType, ValueType>::next(char* prev) const noexcept
+{
+  assert (prev);
+  auto total_len = size();
+  if (total_len == 0) return nullptr;
+
+  auto data_ptr = data() + sizeof(uint32_t);
+  if ((size_t)(prev - data_ptr) >= total_len) return nullptr;
+
+  auto kl = offset_pointer_to_key(prev);
+  prev += kl + sizeof(ValueType);
+
+  return prev;
+};
 
 //====================================================================================
 
@@ -211,3 +250,43 @@ remove(const KeyType key, size_t key_len)
 
   return entry ? true : false;
 }
+
+
+//===============================================================================
+
+template <typename KVStore>
+ArrayHashIterator<KVStore>::
+ArrayHashIterator(const std::vector<KVStore>& kvs): cont_(kvs)
+{
+  KVStore& kv = cont_[cont_slot_];
+  impl_pointer_ = kv.first();
+}
+
+template <typename KVStore>
+typename ArrayHashIterator<KVStore>::value_type
+ArrayHashIterator<KVStore>::operator*() const
+{
+  KVStore& kv = cont_[cont_slot_];
+  if (!impl_pointer_) {
+    impl_pointer_ = kv.first();
+    if (!impl_pointer_) return std::make_pair({nullptr, nullptr}, nullptr);
+  }
+  return kv.item(impl_pointer_);
+}
+
+
+template <typename KVStore>
+ArrayHashIterator<KVStore>&
+ArrayHashIterator<KVStore>::operator++()
+{
+  KVStore& kv = cont_[cont_slot_];
+  impl_pointer_ = kv.next(impl_pointer_);
+  if (!impl_pointer_) {
+    cont_slot_++;
+    KVStore& kv2 = cont_[cont_slot_];
+    impl_pointer_ = kv2.first();
+  }
+  //TODO: if impl_pointer_ is still null means end() ?
+  return *this;
+}
+
