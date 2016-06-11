@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cassert>
+#include <cstddef>
 #include <memory>
 #include <iterator>
 #include <string>
@@ -21,6 +22,17 @@
 #define unlikely(x)     __builtin_expect((x),0)
 
 namespace ds {
+
+//TODO: should be replaced by string_view
+template <typename KeyT>
+struct KeyHolder
+{
+  KeyHolder(KeyT k, size_t l): ket_ptr(k)
+                             , key_len(l)
+  {}
+  KeyT ket_ptr = nullptr;
+  size_t key_len = 0;
+};
 
 namespace detail {
 
@@ -71,17 +83,6 @@ private:
 template <typename T>
 class ArrayHashIterator;
 
-//TODO: should be replaced by string_view
-template <typename KeyT>
-struct KeyHolder
-{
-  KeyHolder(KeyT k, size_t l): ket_ptr(k)
-  			     , key_len(l)
-  {}
-  KeyT ket_ptr = nullptr;
-  size_t key_len = 0;
-};
-
 //TODO: Object ownership for `value` ?For now its assumed to be
 // purely on copy semantics
 
@@ -106,13 +107,13 @@ public:
   void operator=(const RawMemoryMapImpl& other) = delete;
 
 public:
-  using key_type = KeyT;
-  using value_type = ValueT;
+  using key_type = KeyType;
+  using value_type = ValueType;
   friend class ArrayHashIterator<RawMemoryMapImpl<KeyType, ValueType>>;
 
 public:
 
-  ValueType* find(const KeyType key, size_t key_len);
+  ValueType* find(const KeyType key, size_t key_len) const;
 
   bool add(const KeyType key, size_t key_len, const ValueType& value);
 
@@ -137,7 +138,8 @@ private:
     return Buffer::resize(siz);
   }
 
-  size_t basic_checks_size(const KeyType key, size_t key_len) {
+  size_t basic_checks_size(const KeyType key, size_t key_len) const noexcept 
+  {
     if (unlikely(!key || key_len == 0)) return 0;
     if (!Buffer::data()) return 0;
 
@@ -173,13 +175,13 @@ public:
   void operator=(const ListMapImpl&) = delete;
 
 public:
-  using key_type = KeyT;
-  using value_type = ValueT;
+  using key_type = KeyType;
+  using value_type = ValueType;
   friend class ArrayHashIterator<ListMapImpl<KeyType, ValueType>>;
 
 public:
 
-  ValueType* find(const KeyType key, size_t key_len);
+  ValueType* find(const KeyType key, size_t key_len) const;
 
   // Adds new key to the front of the list
   bool add(const KeyType key, size_t key_len, const ValueType& value);
@@ -258,11 +260,43 @@ public:
   using self_type         = ArrayHashIterator<KVStore>;
 
 public:
-  ArrayHashIterator(const std::vector<KVStore>& kvs);
-  value_type operator*() const;
-  self_type& operator++();
-  bool operator==(const self_type&) const;
-  bool operator!=(const self_type&) const;
+  ArrayHashIterator(const std::vector<KVStore>& kvs):
+    cont_(kvs)
+  {
+    KVStore& kv = cont_[cont_slot_];
+    impl_pointer_ = kv.first();
+    // If impl_pointer_ is nullptr here, that means its the end
+  }
+
+  value_type operator*() const
+  {
+    KVStore& kv = cont_[cont_slot_];
+    return impl_pointer_ ?
+      kv.item(impl_pointer_) : value_type();
+  }
+
+  self_type& operator++()
+  {
+    KVStore& kv = cont_[cont_slot_];
+    impl_pointer_ = kv.next(impl_pointer_);
+    if (!impl_pointer_) {
+      cont_slot_++;
+      KVStore& kv2 = cont_[cont_slot_];
+      impl_pointer_ = kv2.first();
+    }
+    //TODO: if impl_pointer_ is still null means end() ?
+    return *this;
+  }
+
+  bool operator==(const self_type& other) const noexcept
+  {
+    return impl_pointer_ == other.impl_pointer_;
+  }
+
+  bool operator!=(const self_type& other) const noexcept
+  {
+    return !(*this == other);
+  }
 
 private:
   std::vector<KVStore>& cont_;
@@ -279,15 +313,18 @@ template <// Type of Value stored against the Key
 	  // Hashing used internally
 	  typename Hasher = typename hash::MurmurHash3,
 	  // Type of implementation used to store key-value
-	  typename KVStore = typename detail::RawMemoryMapImpl<KeyType, ValueType>, 
+	  typename KVStore = typename detail::RawMemoryMapImpl<KeyType, ValueType>
 	  >
 class ArrayHash
 {
 public:
-  ArrayHash(): ArrayHash(initial_capacity_) {}
   ArrayHash(size_t initial_capacity): total_slots_(initial_capacity)
 				    , hash_slots_(total_slots_)
   {}
+  ArrayHash(): total_slots_(initial_capacity_)
+            , hash_slots_(total_slots_)
+  {}
+
   ArrayHash(const ArrayHash&) = delete;
   void operator=(const ArrayHash&) = delete;
 public:
@@ -300,9 +337,44 @@ public:
   const_iterator cend();
 
 public:
-  void add();
-  void find();
-  void remove();
+  bool add(KeyType key, size_t key_len, const ValueType& value)
+  {
+    assert (key && key_len);
+    auto hloc = Hasher()(key, key_len) % total_slots_;
+    auto& kvs = hash_slots_[hloc];
+    return kvs.add(key, key_len, value);
+  }
+
+  bool add(const std::string& key, const ValueType& value)
+  {
+    return add(key.c_str(), key.length(), value);
+  }
+
+  ValueType* find(KeyType key, size_t key_len) const
+  {
+    assert (key && key_len);
+    auto hloc = Hasher()(key, key_len) % total_slots_;
+    auto& kvs = hash_slots_[hloc];
+    return kvs.find(key, key_len);
+  }
+
+  ValueType* find(const std::string& key) const
+  {
+    return find(key.c_str(), key.length());
+  }
+
+  bool remove(KeyType key, size_t key_len)
+  {
+    assert (key && key_len);
+    auto hloc = Hasher()(key, key_len) % total_slots_;
+    auto& kvs = hash_slots_[hloc];
+    return kvs.remove(key, key_len);
+  }
+
+  bool remove(const std::string& key)
+  {
+    return remove(key.c_str(), key.length());
+  }
 
 private:
   // Constant parameters

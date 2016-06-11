@@ -38,7 +38,7 @@ inline uint64_t rotl64 ( uint64_t x, int8_t r )
 class MurmurHash3
 {
 private:
-  static FORCE_INLINE uint32_t fmix32(uint32_t h) {
+  FORCE_INLINE uint32_t fmix32(uint32_t h) {
     h ^= h >> 16;
     h *= 0x85ebca6b;
     h ^= h >> 13;
@@ -50,7 +50,7 @@ private:
 
   //----------
 
-  static FORCE_INLINE uint64_t fmix64(uint64_t k) {
+  FORCE_INLINE uint64_t fmix64(uint64_t k) {
     k ^= k >> 33;
     k *= BIG_CONSTANT(0xff51afd7ed558ccd);
     k ^= k >> 33;
@@ -64,16 +64,16 @@ private:
   // Block read - if your platform needs to do endian-swapping or can only
   // handle aligned reads, do the conversion here
 
-  static FORCE_INLINE uint32_t getblock32(const uint32_t* p, int i) {
+  FORCE_INLINE uint32_t getblock32(const uint32_t* p, int i) {
     return p[i];
   }
 
-  static FORCE_INLINE uint64_t getblock64(const uint64_t* p, int i) {
+  FORCE_INLINE uint64_t getblock64(const uint64_t* p, int i) {
     return p[i];
   }
 
 public:
-  static inline uint32_t operator()(const void * key, int len, uint32_t seed = 0x911C9DC5)
+  inline uint32_t operator()(const void * key, int len, uint32_t seed = 0x911C9DC5)
   {
     const uint8_t * data = (const uint8_t*)key;
     const int nblocks = len / 4;
@@ -127,13 +127,13 @@ private:
   static const uint32_t Prime = 0x01000193; //   16777619
   static const uint32_t Seed  = 0x811C9DC5; // 2166136261
 
-  static FORCE_INLINE uint32_t fnv1a(unsigned char oneByte, uint32_t hash = Seed)
+  FORCE_INLINE uint32_t fnv1a(unsigned char oneByte, uint32_t hash = Seed)
   {
       return (oneByte ^ hash) * Prime;
   }
 public:
 
-  static inline uint32_t operator()(const void* data, size_t numBytes, uint32_t hash = Seed)
+  inline uint32_t operator()(const void* data, size_t numBytes, uint32_t hash = Seed)
   {
     const unsigned char* ptr = (const unsigned char*)data;
     while (numBytes--)

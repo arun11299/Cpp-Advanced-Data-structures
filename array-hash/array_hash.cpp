@@ -29,7 +29,7 @@ RawMemoryMapImpl<KeyType, ValueType>::RawMemoryMapImpl()
 template <typename KeyType, typename ValueType>
 ValueType* 
 RawMemoryMapImpl<KeyType, ValueType>::
-find(const KeyType key, size_t key_len)
+find(const KeyType key, size_t key_len) const
 {
   size_t total_len = basic_checks_size(key, key_len);
   if (unlikely(total_len == 0)) return nullptr;
@@ -182,7 +182,7 @@ ListMapImpl<KeyType, ValueType>::ListMapImpl()
 template <typename KeyType, typename ValueType>
 ValueType*
 ListMapImpl<KeyType, ValueType>::
-find(const KeyType key, size_t key_len)
+find(const KeyType key, size_t key_len) const
 {
   if (!head_) return nullptr;
   auto iter = head_.get();
@@ -252,41 +252,4 @@ remove(const KeyType key, size_t key_len)
 }
 
 
-//===============================================================================
-
-template <typename KVStore>
-ArrayHashIterator<KVStore>::
-ArrayHashIterator(const std::vector<KVStore>& kvs): cont_(kvs)
-{
-  KVStore& kv = cont_[cont_slot_];
-  impl_pointer_ = kv.first();
-}
-
-template <typename KVStore>
-typename ArrayHashIterator<KVStore>::value_type
-ArrayHashIterator<KVStore>::operator*() const
-{
-  KVStore& kv = cont_[cont_slot_];
-  if (!impl_pointer_) {
-    impl_pointer_ = kv.first();
-    if (!impl_pointer_) return std::make_pair({nullptr, nullptr}, nullptr);
-  }
-  return kv.item(impl_pointer_);
-}
-
-
-template <typename KVStore>
-ArrayHashIterator<KVStore>&
-ArrayHashIterator<KVStore>::operator++()
-{
-  KVStore& kv = cont_[cont_slot_];
-  impl_pointer_ = kv.next(impl_pointer_);
-  if (!impl_pointer_) {
-    cont_slot_++;
-    KVStore& kv2 = cont_[cont_slot_];
-    impl_pointer_ = kv2.first();
-  }
-  //TODO: if impl_pointer_ is still null means end() ?
-  return *this;
-}
-
+//========================================================================
