@@ -27,7 +27,7 @@ void test_simple_blob()
   std::cout << "===== Finished test_simple_blob" << std::endl;
 }
 
-void test_iterator_simple()
+void test_blob_iterator_simple()
 {
   std::cout << "Starting test_iterator_simple =====" << std::endl;
 
@@ -53,8 +53,35 @@ void test_iterator_simple()
   std::cout << "===== Finished test_iterator_simple" << std::endl;
 }
 
+void test_list_iterator_simple()
+{
+  std::cout << "Starting test_list_iterator_simple =====" << std::endl;
+
+  ArrayHashList<int> hmap;
+  for (int i = 0; i < 1000; i++) {
+    std::ostringstream oss;
+    oss << "Key-" << i;
+    hmap.add(oss.str(), i);
+  }
+
+  auto it = hmap.begin();
+  size_t found = 0;
+  while (it != hmap.end()) {
+    auto kv = *it;
+    auto& kh = kv.first;
+    assert (kh.key_ptr && kh.key_len);
+    found++;
+    ++it;
+  }
+  std::cout << found << std::endl;
+  assert (found == 1000);
+
+  std::cout << "===== Finished test_list_iterator_simple" << std::endl;
+}
+
 int main() {
-  test_simple_blob();
-  test_iterator_simple();
+  //test_simple_blob();
+  //test_blob_iterator_simple();
+  test_list_iterator_simple();
   return 0;
 }

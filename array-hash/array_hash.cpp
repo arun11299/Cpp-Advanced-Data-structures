@@ -250,5 +250,34 @@ remove(const KeyType key, size_t key_len)
   return entry ? true : false;
 }
 
+template <typename KeyType, typename ValueType>
+char*
+ListMapImpl<KeyType, ValueType>::first() const noexcept
+{
+  if (!head_) return nullptr;
+  return reinterpret_cast<char*>(head_.get());
+}
+
+template <typename KeyType, typename ValueType>
+std::pair<KeyHolder<KeyType>, ValueType*> 
+ListMapImpl<KeyType, ValueType>::item(char* ptr) const noexcept
+{
+  assert (ptr);
+  auto* node = reinterpret_cast<ListNode*>(ptr);
+  KeyHolder<KeyType> kh(node->key_, node->key_len_);
+
+  return std::make_pair(kh, &node->value_);
+}
+
+template <typename KeyType, typename ValueType>
+char*
+ListMapImpl<KeyType, ValueType>::next(char* prev) const noexcept
+{
+  assert (prev);
+  auto* node = reinterpret_cast<ListNode*>(prev);
+  if (!node->next_) return nullptr;
+  prev = reinterpret_cast<char*>(node->next_.get());
+  return prev;
+}
 
 //========================================================================

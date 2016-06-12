@@ -199,6 +199,7 @@ private:
 
   struct ListNodeDeleter {
     void operator()(ListNode* node) {
+      node->next_.reset();
       delete [] (reinterpret_cast<char*>(node));
     }
   };
@@ -206,9 +207,9 @@ private:
   class ListNode
   {
   public:
-    using NodeKey = typename std::remove_const<KeyType>::type;
+    using NodeKeyType = typename std::remove_const<KeyType>::type;
 
-    ListNode(NodeKey k, size_t l, const ValueType& v, 
+    ListNode(NodeKeyType k, size_t l, const ValueType& v, 
     	std::unique_ptr<ListNode, ListNodeDeleter> nxt):
       key_(k),
       key_len_(l),
@@ -230,7 +231,7 @@ private:
     // Key is allocated right after the ListNode to improve
     // cache hit. This design results in wierd allocation and deallocation
     // of ListNode
-    NodeKey key_ = nullptr;
+    NodeKeyType key_ = nullptr;
     size_t key_len_ = 0;
     ValueType value_;
     std::unique_ptr<ListNode, ListNodeDeleter> next_ = nullptr;

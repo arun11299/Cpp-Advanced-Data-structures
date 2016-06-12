@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cassert>
+#include <sstream>
 #include "array_hash.hpp"
 #include "array_hash.cpp"
 
@@ -53,8 +54,19 @@ void simple_delete_test()
   assert (size == 1);
 }
 
+void bulk_add_test()
+{
+  ListMapImpl<const char*, int> hmap;
+  for (int i = 0; i < 5; i++) {
+    std::ostringstream oss;
+    oss << "key-" << i;
+    hmap.add(oss.str().c_str(), oss.str().length(), i);
+  }
+}
+
 int main() {
   simple_test();
   simple_delete_test();
+  bulk_add_test();
   return 0;
 }
