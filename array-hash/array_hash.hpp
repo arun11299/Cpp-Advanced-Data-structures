@@ -1,5 +1,11 @@
 #ifndef ARRAY_HASH_HPP
 #define ARRAY_HASH_HPP
+/*!
+ * This is an implementation of "Cache-Conscious Collision
+ * Resolution in String Hash Tables" by Nikolas Askitis and 
+ * Justin Zobel.
+ * HTTP link: http://naskitis.com/naskitis-spire05.pdf
+ */
 
 #if __cplusplus < 201103L
   #error This header needs atleast a C++11 compliant compiler.
