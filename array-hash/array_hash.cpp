@@ -64,14 +64,13 @@ add(KeyType key, size_t key_len, const ValueType& value)
     *val = value;
     return true;
   }
-
   // Key does not exist already
   bool res = false;
   auto old_siz = size();
-  auto new_siz = (old_siz == 0 ? sizeof(uint32_t) : 0) + // Buffer for holding size information
-                 (key_len < 128 ? 1 : 2) +               // Extra byte(s) for storing length encoding
-                  key_len +                              // Buffer for holding key
-                  sizeof(ValueType);                     // Buffer for holding value
+  auto new_siz = (sizeof(uint32_t) + old_siz) + // Buffer for holding size information
+                 (key_len < 128 ? 1 : 2) +      // Extra byte(s) for storing length encoding
+                  key_len +                     // Buffer for holding key
+                  sizeof(ValueType);            // Buffer for holding value
 
   // Increase the size of memory buffer to 
   // accomodate one more key value
@@ -80,9 +79,9 @@ add(KeyType key, size_t key_len, const ValueType& value)
     return false;
   }
   // Update the size at the head of the buffer
-  update_size(new_siz - (old_siz == 0 ? sizeof(uint32_t) : 0));
+  update_size(new_siz - sizeof(uint32_t));
 
-  auto data_ptr = data() + (old_siz == 0 ? sizeof(uint32_t) : old_siz);
+  auto data_ptr = data() + (old_siz + sizeof(uint32_t));
 
   // Encode length information
   if (key_len < 128) {
@@ -158,10 +157,10 @@ RawMemoryMapImpl<KeyType, ValueType>::next(char* prev) const noexcept
   if (total_len == 0) return nullptr;
 
   auto data_ptr = data() + sizeof(uint32_t);
-  if ((size_t)(prev - data_ptr) >= total_len) return nullptr;
-
   auto kl = offset_pointer_to_key(prev);
   prev += kl + sizeof(ValueType);
+
+  if ((size_t)(prev - data_ptr) >= total_len) return nullptr;
 
   return prev;
 };

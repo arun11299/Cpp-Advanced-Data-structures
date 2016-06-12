@@ -23,14 +23,17 @@
 
 namespace ds {
 
+//FWd decl iterator class - needed for frienship
+template <typename> class ArrayHashIterator;
+
 //TODO: should be replaced by string_view
 template <typename KeyT>
 struct KeyHolder
 {
-  KeyHolder(KeyT k, size_t l): ket_ptr(k)
+  KeyHolder(KeyT k, size_t l): key_ptr(k)
                              , key_len(l)
   {}
-  KeyT ket_ptr = nullptr;
+  KeyT key_ptr = nullptr;
   size_t key_len = 0;
 };
 
@@ -79,9 +82,6 @@ private:
 };
 
 //==============================================================================
-// Fwd declare iterator class
-template <typename T>
-class ArrayHashIterator;
 
 //TODO: Object ownership for `value` ?For now its assumed to be
 // purely on copy semantics
@@ -109,7 +109,6 @@ public:
 public:
   using key_type = KeyType;
   using value_type = ValueType;
-  friend class ArrayHashIterator<RawMemoryMapImpl<KeyType, ValueType>>;
 
 public:
 
@@ -154,6 +153,9 @@ private:
   }
 
 private: //For iterator class only
+  template <typename U>
+  friend class ds::ArrayHashIterator;
+
   char* first() const noexcept;
   std::pair<KeyHolder<KeyType>, ValueType*> item(char* ptr) const noexcept;
   char* next(char* prev) const noexcept;
@@ -177,7 +179,9 @@ public:
 public:
   using key_type = KeyType;
   using value_type = ValueType;
-  friend class ArrayHashIterator<ListMapImpl<KeyType, ValueType>>;
+
+  template <typename U>
+  friend class ds::ArrayHashIterator;
 
 public:
 
@@ -260,37 +264,41 @@ public:
   using self_type         = ArrayHashIterator<KVStore>;
 
 public:
-  ArrayHashIterator(const std::vector<KVStore>& kvs):
-    cont_(kvs)
+  ArrayHashIterator(const std::vector<KVStore>& kvs, size_t slot = 0):
+    cont_(kvs),
+    cont_slot_(slot)
   {
-    KVStore& kv = cont_[cont_slot_];
+    if (cont_slot_ == cont_.size()) return;
+
+    const KVStore& kv = cont_[cont_slot_];
     impl_pointer_ = kv.first();
-    // If impl_pointer_ is nullptr here, that means its the end
+    if (!impl_pointer_) {
+      impl_pointer_ = find_next_valid_slot();
+    }
   }
 
   value_type operator*() const
   {
-    KVStore& kv = cont_[cont_slot_];
+    const KVStore& kv = cont_[cont_slot_];
     return impl_pointer_ ?
-      kv.item(impl_pointer_) : value_type();
+      kv.item(impl_pointer_) : 
+      value_type{KeyHolder<typename KVStore::key_type>(nullptr, 0), nullptr};
   }
 
   self_type& operator++()
   {
-    KVStore& kv = cont_[cont_slot_];
+    const KVStore& kv = cont_[cont_slot_];
     impl_pointer_ = kv.next(impl_pointer_);
     if (!impl_pointer_) {
-      cont_slot_++;
-      KVStore& kv2 = cont_[cont_slot_];
-      impl_pointer_ = kv2.first();
+      impl_pointer_ = find_next_valid_slot();
     }
-    //TODO: if impl_pointer_ is still null means end() ?
     return *this;
   }
 
   bool operator==(const self_type& other) const noexcept
   {
-    return impl_pointer_ == other.impl_pointer_;
+    return cont_slot_ == other.cont_slot_ && 
+      impl_pointer_ == other.impl_pointer_;
   }
 
   bool operator!=(const self_type& other) const noexcept
@@ -299,9 +307,21 @@ public:
   }
 
 private:
-  std::vector<KVStore>& cont_;
+  char* find_next_valid_slot() noexcept
+  {
+    while (!impl_pointer_) {
+      cont_slot_++;
+      if (cont_slot_ == cont_.size()) break;
+      auto& kv_store = cont_[cont_slot_];
+      impl_pointer_ = kv_store.first();
+    }
+    return impl_pointer_;
+  }
+
+private:
+  const std::vector<KVStore>& cont_;
   // Pointer to the underlying storage type `KVStore`
-  const char* impl_pointer_ = nullptr;
+  char* impl_pointer_ = nullptr;
   size_t cont_slot_ = 0;
 };
 
@@ -331,8 +351,8 @@ public:
   using iterator = ArrayHashIterator<KVStore>;
   using const_iterator = const iterator;
 
-  iterator begin();
-  iterator end();
+  iterator begin() { return iterator(hash_slots_); }
+  iterator end()   { return iterator(hash_slots_, total_slots_); }
   const_iterator cbegin();
   const_iterator cend();
 
