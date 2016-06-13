@@ -406,7 +406,7 @@ public:
 private:
   // Constant parameters
   const double load_factor_      = 100000.0;
-  const size_t initial_capacity_ = 4096;
+  const size_t initial_capacity_ = 1056323; 
 
   // Runtime parameters
   size_t total_slots_            = 0;
@@ -420,7 +420,7 @@ private:
 
 // Useful typedefs for lesser finger smashing.
 template <typename ValueT, 
-	 typename Hasher = typename hash::MurmurHash3>
+	 typename Hasher = typename hash::FNVHash>
 using ArrayHashBlob = ArrayHash<ValueT, Hasher, 
                                 typename detail::RawMemoryMapImpl<KeyType, ValueT>>;
 
