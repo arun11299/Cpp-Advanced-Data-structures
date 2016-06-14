@@ -5,20 +5,18 @@
 #error This header needs atleast a C++11 compliant compiler.
 #endif
 
-#include <algorithm>
+#include <cassert>
 #include <unordered_map>
+#include <iostream>
 
 namespace ds {
-namespace detail {
 
-  struct ListNode {
-    int id_ = 0;
-    int children_ = 0;
-    ListNode* parent_ = nullptr;
-    ListNode* next_ = nullptr;
-  };
-
-}
+struct ListNode {
+  int id_ = 0;
+  int children_ = 0;
+  ListNode* parent_ = nullptr;
+  ListNode* next_ = nullptr;
+};
 
 template <typename ValueType>
 class DisjointSet
@@ -31,8 +29,12 @@ public:
   }
 
 public:
-  void make_set(ValueType& val) {
-    auto tmp = new detail::ListNode;
+  size_t sets() const noexcept {
+    return sets_;
+  }
+
+  void make_set(const ValueType& val) {
+    auto tmp = new ListNode;
     if (!tail_) {
       tail_= tmp;
       head_ = tail_;
@@ -42,11 +44,11 @@ public:
     }
     tail_->parent_ = tmp;
     tail_->id_ = sets_;
-    tracker_.emplace({val, tmp});
+    tracker_.emplace(val, tmp);
     sets_++;
   }
 
-  void union_set(ValueType& val1, ValueType& val2) {
+  void union_set(const ValueType& val1, const ValueType& val2) {
     auto it1 = tracker_.find(val1);
     assert (it1 != tracker_.end());
 
@@ -55,7 +57,7 @@ public:
 
     auto node1 = it1->second;
     auto node2 = it2->second;
-    ListNode* master, child;
+    ListNode* master, *child;
 
     if (node1->parent_->children_ <= node2->parent_->children_) {
       master = node2->parent_; 
@@ -74,6 +76,7 @@ public:
       second->parent_ = master;
       second = nxt;
     }
+    sets_--;
   }
 
   int find_set(ValueType& val) {
@@ -86,8 +89,8 @@ public:
 private:
   std::unordered_map<ValueType, ListNode*> tracker_;
   size_t sets_ = 0;
-  detail::ListNode* head_ = nullptr;
-  detail::ListNode* tail_ = nullptr;
+  ListNode* head_ = nullptr;
+  ListNode* tail_ = nullptr;
 };
 
 }
