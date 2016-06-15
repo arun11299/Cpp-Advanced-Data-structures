@@ -6,12 +6,13 @@
 #endif
 
 #include <cassert>
+#include <memory>
 #include <unordered_map>
-#include <iostream>
 
 namespace ds {
 
 struct ListNode {
+  ListNode(): parent_(this) {}
   int id_ = 0;
   int children_ = 0;
   ListNode* parent_ = nullptr;
@@ -34,17 +35,9 @@ public:
   }
 
   void make_set(const ValueType& val) {
-    auto tmp = new ListNode;
-    if (!tail_) {
-      tail_= tmp;
-      head_ = tail_;
-    } else {
-      tail_->next_ = tmp;
-      tail_ = tail_->next_;
-    }
-    tail_->parent_ = tmp;
-    tail_->id_ = sets_;
-    tracker_.emplace(val, tmp);
+    std::unique_ptr<ListNode> tmp(new ListNode());
+    tmp->id_ = sets_;
+    tracker_.emplace(val, std::move(tmp));
     sets_++;
   }
 
@@ -55,8 +48,8 @@ public:
     auto it2 = tracker_.find(val2);
     assert (it2 != tracker_.end());
 
-    auto node1 = it1->second;
-    auto node2 = it2->second;
+    auto node1 = it1->second.get();
+    auto node2 = it2->second.get();
     ListNode* master, *child;
 
     if (node1->parent_->children_ <= node2->parent_->children_) {
@@ -79,18 +72,22 @@ public:
     sets_--;
   }
 
-  int find_set(ValueType& val) {
+  int find_set(const ValueType& val) {
     auto it = tracker_.find(val);
     assert (it != tracker_.end());
 
     return it->second->parent_->id_;
   }
 
+  void print_sets(std::ostream& os) {
+    for (auto& e : tracker_) {
+      os << e.first << " = " << e.second->parent_->id_ << "\n";
+    }
+  }
+
 private:
-  std::unordered_map<ValueType, ListNode*> tracker_;
+  std::unordered_map<ValueType, std::unique_ptr<ListNode>> tracker_;
   size_t sets_ = 0;
-  ListNode* head_ = nullptr;
-  ListNode* tail_ = nullptr;
 };
 
 }
