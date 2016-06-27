@@ -8,7 +8,9 @@ void test_simple()
 {
   std::cout << "Start test_simple=====" << std::endl;
   AVLTree_Base<int> map;
-  map.insert(1);
+  for (int i = 0; i < 10; i++) {
+    map.insert(i);
+  }
   std::cout << "=====End test_simple" << std::endl;
 }
 

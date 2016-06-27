@@ -71,6 +71,8 @@ private:
   NodeTypePtr do_left_rotate(NodeTypePtr node);
   NodeTypePtr do_left_left_rotate(NodeTypePtr node);
   NodeTypePtr do_left_right_rotate(NodeTypePtr node);
+  NodeTypePtr do_right_left_rotate(NodeTypePtr node);
+  NodeTypePtr do_right_right_rotate(NodeTypePtr node);
 
   void relocate_to_rightmost(NodeTypePtr from,
 			     NodeTypePtr node);
