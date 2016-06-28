@@ -1,155 +1,189 @@
 #include "avl_tree.hpp"
 using namespace ds;
 
-template <typename T, typename Comp>
-bool AVLTree_Base<T, Comp>::insert(const value_type& value)
+template <typename K, typename V, typename Comp>
+bool AVLTree_Base<K, V, Comp>::insert(const value_type& value)
 {
   if (head_ == nullptr) {
     head_ = new NodeType(value);
     return true;
   }
-
-  return do_insert(head_, value);
+  auto tnode = do_insert(head_, value);
+  if (!tnode) {
+    return false;
+  }
+  if (tnode != head_) head_ = tnode;
+  return true;
 }
 
-template <typename T, typename Comp>
-auto AVLTree_Base<T, Comp>::
+template <typename K, typename V, typename Comp>
+auto AVLTree_Base<K, V, Comp>::
 do_insert(NodeTypePtr node, const value_type& value)
   -> NodeTypePtr 
 {
   assert (node);
-  // Do not insert if the value already exists
-  if (node->value() == value) return nullptr;
+  if (node->key() == value.first) return nullptr;
+  NodeTypePtr ret_node = nullptr;
 
-  NodeTypePtr tmp = nullptr;
-
-  if (compare_(value, node->value())) {
+  if (compare_(value.second, node->key())) {
     if (!node->left()) {
-      return new NodeType(value);
+      node->left(new NodeType(value));
+      node->adjust_height();
+      return node;
     }
-    tmp = do_insert(node->left(), value);
-    if (tmp) node->left(tmp);
-
+    ret_node = do_insert(node->left(), value);
+    if (ret_node != node->left()) node->left(ret_node);
   } else {
     if (!node->right()) {
-      return new NodeType(value);
+      node->right(new NodeType(value));
+      node->adjust_height();
+      return node;
     }
-    tmp = do_insert(node->right(), value);
-    if (tmp) node->right(tmp);
+    ret_node = do_insert(node->right(), value);
+    if (ret_node != node->right()) node->right(ret_node);
   }
+  // Adjust the height
+  node->adjust_height();
 
-  // Update the node height
-  node->height(node->height()  +1);
-
-  if (tmp) {
-    uint32_t left = node->left_subtree_ht();
-    uint32_t right = node->right_subtree_ht();
-
-    if ((left > right) && ((left - right) > 1)) {
+  if (ret_node) {
+    auto ht = node->subtree_heights();
+    if (ht.first > ht.second && (ht.first - ht.second) > 1) {
       return do_left_rotate(node);
-    } else if ((right > left) && (right - left) > 1) {
+    } else if (ht.second > ht.first && (ht.second - ht.first) > 1) {
       return do_right_rotate(node);
     }
+  } else {
+    return nullptr;
   }
-
-  return tmp;
+  return node;
 }
 
-template <typename T, typename Comp>
-auto AVLTree_Base<T, Comp>::do_left_rotate(NodeTypePtr node)
+template <typename K, typename V, typename Comp>
+auto AVLTree_Base<K, V, Comp>::do_left_rotate(NodeTypePtr node)
   -> NodeTypePtr
 {
   assert (node);
-  auto lchild = node->left();
-  if (lchild->left_subtree_ht() >= lchild->right_subtree_ht()) {
+  auto left_child = node->left();
+  assert (left_child);
+  auto ht = left_child->subtree_heights();
+  if (ht.first > ht.second) {
     return do_left_left_rotate(node);
   } else {
     return do_left_right_rotate(node);
   }
-
   assert (0);
-  return nullptr;
+  return node;
 }
 
-template <typename T, typename Comp>
-auto AVLTree_Base<T, Comp>::do_right_rotate(NodeTypePtr node)
+template <typename K, typename V, typename Comp>
+auto AVLTree_Base<K, V, Comp>::do_right_rotate(NodeTypePtr node)
   -> NodeTypePtr
 {
   assert (node);
-  auto rchild = node->right();
-  if (rchild->left_subtree_ht() >= rchild->right_subtree_ht()) {
-    return do_right_left_rotate(node);
-  } else {
+  auto right_child = node->right();
+  assert (right_child);
+  auto ht = right_child->subtree_heights();
+  if (ht.second > ht.first) {
     return do_right_right_rotate(node);
+  } else {
+    return do_right_left_rotate(node);
   }
 
   assert (0);
-  return nullptr;
+  return node;
 }
 
-template <typename T, typename Comp>
-auto AVLTree_Base<T, Comp>::do_left_left_rotate(NodeTypePtr node)
+template <typename K, typename V, typename Comp>
+auto AVLTree_Base<K, V, Comp>::do_left_left_rotate(NodeTypePtr node)
   -> NodeTypePtr
 {
   assert (node);
-  auto lchild = node->left();
-  assert (lchild->right() == nullptr);
-  relocate_to_rightmost(lchild, node);
-  return lchild;
+  auto left_child = node->left();
+  assert (left_child);
+
+  // Make `node` right child of left_child
+  node->left(left_child->right());
+  left_child->right(node);
+
+  // Adjust heights
+  node->adjust_height();
+  left_child->adjust_height();
+
+  return left_child;
 }
 
-template <typename T, typename Comp>
-auto AVLTree_Base<T, Comp>::do_left_right_rotate(NodeTypePtr node)
+template <typename K, typename V, typename Comp>
+auto AVLTree_Base<K, V, Comp>::do_right_right_rotate(NodeTypePtr node)
+   -> NodeTypePtr
+{
+  assert (node);
+  auto right_child = node->right();
+  assert (right_child);
+
+  //Make node left child of right_child
+  node->as_leaf();
+  percolate_down_left(right_child, node);
+  right_child->adjust_height();
+
+  return right_child;
+}
+
+template <typename K, typename V, typename Comp>
+auto AVLTree_Base<K, V, Comp>::do_left_right_rotate(NodeTypePtr node)
   -> NodeTypePtr
 {
   assert (node);
-  auto tmp = node->left();
-  relocate_to_leftmost(tmp->right(), tmp);
+  auto left_child = node->left();
+  assert (left_child);
+
+  //promote right child of the left_child
+  auto rl_child = left_child->right();
+  assert (rl_child);
+
+  // Make it the leaf node
+  left_child->as_leaf();
+  percolate_down_left(rl_child, left_child);
+
+  //adjust height
+  rl_child->adjust_height();
+  node->left(rl_child);
+  node->adjust_height();
+
   return do_left_left_rotate(node);
 }
 
-template <typename T, typename Comp>
-auto AVLTree_Base<T, Comp>::do_right_left_rotate(NodeTypePtr node)
+template <typename K, typename V, typename Comp>
+auto AVLTree_Base<K, V, Comp>::do_right_left_rotate(NodeTypePtr node)
   -> NodeTypePtr
 {
   assert (node);
-  auto tmp = node->right();
-  relocate_to_rightmost(tmp->left(), tmp);
+  auto right_child = node->right();
+  assert (right_child);
+
+  auto lr_child = right_child->left();
+  assert (lr_child);
+
+  right_child->left(lr_child->right());
+  lr_child->right(right_child);
+  node->right(lr_child);
+
+  right_child->adjust_height();
+  lr_child->adjust_height();
+  node->adjust_height();
+
   return do_right_right_rotate(node);
 }
 
-template <typename T, typename Comp>
-auto AVLTree_Base<T, Comp>::do_right_right_rotate(NodeTypePtr node)
-  -> NodeTypePtr
+template <typename K, typename V, typename Comp>
+void AVLTree_Base<K, V, Comp>::
+percolate_down_left(NodeTypePtr top, NodeTypePtr leaf)
 {
-  assert (node);
-  auto rchild = node->right();
-  relocate_to_leftmost(rchild, node);
-  return rchild;
-}
-
-template <typename T, typename Comp>
-void AVLTree_Base<T, Comp>::
-relocate_to_rightmost(NodeTypePtr from, NodeTypePtr node)
-{
-  assert (from && node);
-  auto tmp = from->right();
-  while (tmp) {
-    from = tmp;
-    tmp = tmp->right();
+  assert (top && leaf);
+  if (!top->left()) {
+    top->left(leaf);
+    top->adjust_height();
+    return;
   }
-  from->right(node);
-}
-
-template <typename T, typename Comp>
-void AVLTree_Base<T, Comp>::
-relocate_to_leftmost(NodeTypePtr from, NodeTypePtr node)
-{
-  assert (from && node);
-  auto tmp = from->left();
-  while (tmp) {
-    from = tmp;
-    tmp = tmp->left();
-  }
-  from->left(node);
+  percolate_down_left(top->left(), leaf);
+  top->adjust_height();
 }
